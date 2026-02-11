@@ -27,7 +27,7 @@ ENV ADMINUSER=${ADMINUSER}
 # saving here for reference. easy to overlook. double quotes vs single quotes based on using arg or not.
 # RUN curl -1sSLf 'https://downloads.enterprisedb.com/*********/enterprise/setup.rpm.sh' | sudo -E bash && \
 
-RUN curl -1sSLf "https://downloads.enterprisedb.com/${EDBTOKEN}/enterprise/setup.rpm.sh"  | sudo -E bash && \
+RUN curl -1sSLf -k "https://downloads.enterprisedb.com/${EDBTOKEN}/enterprise/setup.rpm.sh"  | sudo -E bash && \
     dnf install -y --setopt=sslverify=false tpaexec && \
     dnf clean all && rm -rf /var/cache/dnf
 

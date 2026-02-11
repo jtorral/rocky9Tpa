@@ -1,34 +1,60 @@
 ARG TARGETARCH="aarch64"
 FROM rockylinux:9.3 AS builder
 
+# install base utils and official docker cli 
 
-RUN dnf -y update && \
-    dnf install -y wget telnet jq vim sudo gnupg openssh-server openssh-clients \
+RUN dnf -y --setopt=sslverify=false update && \
+    dnf install -y --setopt=sslverify=false dnf-plugins-core && \
+    dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo && \
+    dnf install -y --setopt=sslverify=false \
+        wget telnet jq vim sudo gnupg openssh-server openssh-clients \
         procps-ng net-tools iproute iputils less diffutils watchdog epel-release \
-        docker emacs-nox git make && \
-    dnf clean all && rm -rf /var/cache/dnf
-    
-# Install EDB Repository and TPA 
-# We use curl to pull the setup script and pipe it to bash.
-# Then we install tpaexec directly.
-       
-RUN curl -1sSLf 'https://downloads.enterprisedb.com/*********/enterprise/setup.rpm.sh' | sudo -E bash && \
-    dnf install -y tpaexec && \
+        docker-ce-cli git make emacs-nox python3-pip file && \
     dnf clean all && rm -rf /var/cache/dnf
 
-# CRB / libmemcached Setup
-RUN dnf install -y 'dnf-command(config-manager)' && \
-    dnf config-manager --set-enabled crb && \
-    dnf install -y libmemcached-awesome && \
+# install python docker sdk needed for tpa/ansible
+
+RUN pip3 install --no-cache-dir docker
+
+# install edb repository tpa and prep for a tpa admiN
+# We pass our token as argument at build time
+
+ARG EDBTOKEN=""
+ENV EDBTOKEN=${EDBTOKEN}
+
+ARG ADMINUSER="tpa_admin"
+ENV ADMINUSER=${ADMINUSER}
+
+# saving here for reference. easy to overlook. double quotes vs single quotes based on using arg or not.
+# RUN curl -1sSLf 'https://downloads.enterprisedb.com/*********/enterprise/setup.rpm.sh' | sudo -E bash && \
+
+RUN curl -1sSLf -k "https://downloads.enterprisedb.com/${EDBTOKEN}/enterprise/setup.rpm.sh"  | sudo -E bash && \
+    dnf install -y --setopt=sslverify=false tpaexec && \
     dnf clean all && rm -rf /var/cache/dnf
 
-# --- 4. Configuration and Entrypoint ---
+# crb / libmemcached setup 
+
+RUN dnf config-manager --set-enabled crb && \
+    dnf install -y --setopt=sslverify=false libmemcached-awesome && \
+    dnf clean all && rm -rf /var/cache/dnf
+
+# final config and entrypoint
+
 COPY id_rsa /
 COPY id_rsa.pub /
 COPY authorized_keys /
 
-# Expose ports
-EXPOSE 22 
+# set up ssh directory for the root user to avoid permission issues during TPA runs
+# using the pre-generated ssh files included in this repo
+
+RUN mkdir -p /root/.ssh && \
+    cp /id_rsa /root/.ssh/id_rsa && \
+    cp /id_rsa.pub /root/.ssh/id_rsa.pub && \
+    cp /authorized_keys /root/.ssh/authorized_keys && \
+    chmod 700 /root/.ssh && \
+    chmod 600 /root/.ssh/id_rsa
+
+EXPOSE 22  
 
 COPY entrypoint.sh /
 RUN chmod +x /entrypoint.sh
