@@ -7,6 +7,9 @@ And are tired of all the headaches in setting up EC2' instances, providing crede
 There are several way to run this based on your architecture and base OS hosting your Docker engine. Having said, that,  click on the links below for the appropriate set of instruction
 
 [Running Strictly Windows](https://github.com/jtorral/rocky9Tpa/blob/main/winDoc.md)
+
 [Running Windows with WSL](https://github.com/jtorral/rocky9Tpa/blob/main/winWslDoc.md)
+
 [Running strictly Linux](https://github.com/jtorral/rocky9Tpa/blob/main/linuxDoc.md)
+
 [MAC OS on ARM](https://github.com/jtorral/rocky9Tpa/blob/main/macDoc.md)
