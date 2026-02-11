@@ -1,0 +1,35 @@
+ARG TARGETARCH="aarch64"
+FROM rockylinux:9.3 AS builder
+
+
+RUN dnf -y update && \
+    dnf install -y wget telnet jq vim sudo gnupg openssh-server openssh-clients \
+        procps-ng net-tools iproute iputils less diffutils watchdog epel-release \
+        docker emacs-nox git make && \
+    dnf clean all && rm -rf /var/cache/dnf
+    
+# Install EDB Repository and TPA 
+# We use curl to pull the setup script and pipe it to bash.
+# Then we install tpaexec directly.
+       
+RUN curl -1sSLf 'https://downloads.enterprisedb.com/*********/enterprise/setup.rpm.sh' | sudo -E bash && \
+    dnf install -y tpaexec && \
+    dnf clean all && rm -rf /var/cache/dnf
+
+# CRB / libmemcached Setup
+RUN dnf install -y 'dnf-command(config-manager)' && \
+    dnf config-manager --set-enabled crb && \
+    dnf install -y libmemcached-awesome && \
+    dnf clean all && rm -rf /var/cache/dnf
+
+# --- 4. Configuration and Entrypoint ---
+COPY id_rsa /
+COPY id_rsa.pub /
+COPY authorized_keys /
+
+# Expose ports
+EXPOSE 22 
+
+COPY entrypoint.sh /
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
