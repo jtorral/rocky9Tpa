@@ -2,10 +2,10 @@ FROM rockylinux:9.3 AS base
 
 # install base utils and official docker cli 
 
-RUN dnf -y update && \
-    dnf install -y dnf-plugins-core && \
+RUN dnf -y --setopt=sslverify=false update && \
+    dnf install -y --setopt=sslverify=false dnf-plugins-core && \
     dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo && \
-    dnf install -y \
+    dnf install -y --setopt=sslverify=false \
         wget telnet jq vim sudo gnupg openssh-server openssh-clients \
         procps-ng net-tools iproute iputils less diffutils watchdog epel-release \
         docker-ce-cli git make emacs-nox python3-pip file && \
@@ -28,13 +28,13 @@ ENV ADMINUSER=${ADMINUSER}
 # RUN curl -1sSLf 'https://downloads.enterprisedb.com/*********/enterprise/setup.rpm.sh' | sudo -E bash && \
 
 RUN curl -1sSLf "https://downloads.enterprisedb.com/${EDBTOKEN}/enterprise/setup.rpm.sh"  | sudo -E bash && \
-    dnf install -y tpaexec && \
+    dnf install -y --setopt=sslverify=false tpaexec && \
     dnf clean all && rm -rf /var/cache/dnf
 
 # crb / libmemcached setup 
 
 RUN dnf config-manager --set-enabled crb && \
-    dnf install -y libmemcached-awesome && \
+    dnf install -y --setopt=sslverify=false libmemcached-awesome && \
     dnf clean all && rm -rf /var/cache/dnf
 
 # final config and entrypoint
