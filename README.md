@@ -1,3 +1,4 @@
+
 # rocky9Tpa
 
 This repo allows you to run  a tpa container to orchestrate additional tpa deploys on your existing while keeping it local to your laptop or desktop. 
@@ -21,8 +22,6 @@ This requires several explanations based on your environment.
 
 The explanation below is generic and applies to any environment.  But, I will describe some minor chnages needed based on the different environments.
 
-### Setup: Windows laptop with WSL running Alma Linux
-
 **The Docker out of Docker Concept**
 
 Even though we call this DinD (Docker in Docker), what we are actually doing is DooD (Docker out of Docker).
@@ -33,13 +32,13 @@ If the tpa container was a  real DinD setup, it would have a whole Docker engine
 
 The Docker Socket is the telephone line to the Docker Engine.
 
-In this setup, the Docker Engine (the brain) lives on the AlmaLinux / WSL host.  Outside of the actual tpoa container.
+In this setup, the Docker Engine (the brain) lives on the AlmaLinux / WSL host.  Outside of the actual tpa container.
 
 The Docker CLI (the remote control) lives inside the tpa container.
 
-By mounting -v /var/run/docker.sock:/run/docker.sock, I am literally plugging the  telephone line  from the host into the container. Without this, when tpa tries to run a command like docker run postgres, the container would say, "I don't see a docker engine here, I don't know what to do."  then fail.
+By mounting **-v /var/run/docker.sock:/run/docker.sock**, I am literally plugging the  telephone line  from the host into the container. Without this, when tpa tries to run a command like docker run postgres, the container would say, "Dude! I don't see a docker engine here, I don't know what to do."  then fail.
 
-What is with the environment variable ( -e DOCKER_HOST ) ?
+**What is with the environment variable ( -e DOCKER_HOST ) ?**
 
 In this specific setup, I mounted the socket to /run/docker.sock. However, the Docker CLI usually expects that telephone line to be at /var/run/docker.sock.
 
@@ -63,9 +62,9 @@ To summarize it ...
    - If the tpa container stops, the Postgres containers it created keep running on the host
 
 
-### Setup: Fedora laptop ( the real McCoy )
+### Redhat Family caveats. READ THIS !
 
-This is very similar to the above scenario. However, even though it is straight forward Unix I had to work more to get this version working. Thus, I was running into the security layers specific to the RHEL family.  
+In this scenario, the Host is running pure linux. No WSL. Just plain old Fedora. This is very similar to the above scenario. However, even though it is straight forward Unix I had to work more to get this version working. Thus, I was running into the security layers specific to the RHEL family.  
 
 By the way, Ubuntu and Debian users rarely see this because they use a different security framework.
 
@@ -77,7 +76,7 @@ When you add **:z** to your volume mount, Docker automatically tells selinux: "H
 
 This changes the selinux context of the socket so the container process has permission to touch it.
 
-I actually had to disable selinux on my Fedora laptop even with **:z**, sometimes the default selinux policy on Fedora is so restrictive that it blocks containers from accessing system sockets entirely for safety. By disabling it (or setting it to permissive), I told the guard to  take a hike and stop blocking actions.
+I actually had to disable selinux on my Fedora laptop even with **:z**, sometimes the default selinux policy on Fedora is so restrictive that it blocks containers from accessing system sockets entirely for safety. By disabling it (or setting it to permissive), I told the guard to  take a hike and stop blocking actions. This is a real PITA some times.
 
 **Does this apply to Ubuntu or Debian?**  
 
