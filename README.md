@@ -86,9 +86,37 @@ Having said that about the :z flag,  You can leave the :z (or :Z) flag in the ru
 
 The Docker engine is designed to be cross platform. When you pass the :z flag to a Docker engine running on a system without selinux (like Ubutu ), Docker simply recognizes the flag but realizes there are no selinux labels to apply. It silently ignores the instruction and mounts the volume normally
 
-## Lets get started
+## Are you deploying on a true Windows only laptop?
 
-### Clone this repo.
+This is a really minor caveat if you will be deploying on a Windows system only. Meaning no WSL.  
+
+**Before you clone the repo. Read this. !!!!**
+
+By default, Git for Windows converts Linux line endings (LF) to Windows line endings (CRLF) when you check out code.
+
+When Docker copies the entrypoint.sh or other files into the container we are creating which is a Rocky Linux container, the linux shell sees the hidden **\r** (carriage return) at the end of the line (#!/bin/bash\r) and fails to execute it because it looks for a shell named bash\r, which doesn't exist.
+
+**The quick fix ( If you didn't read this section and already cloned the repo )**
+
+Fix the line endings . Open entrypoint.sh in Notepad++.  Look at the bottom right corner of the window and confirm it says  CRLF. 
+
+**To fix this this with Notepad++**
+
+- Open the file in Notepad++.
+- Go to the Edit menu.
+- Select EOL Conversion.
+- Choose Unix (LF).
+- Save the file.
+
+**If you paid attention and didn't clone the repo yet.** 
+
+To stop Windows from messing with your scripts in the future, run this command in your PowerShell terminal
+
+    git config --global core.autocrlf false
+
+
+
+### Now, go ahead and clone this repo.
 
 **Make sure docker is running on the host computer. ( The Brain Computer )** 
 
@@ -114,12 +142,24 @@ In the above command, you can change the name of the **ADMINUSER** of you like.
 
 Once the image builds,  run the container.  Keep in mind everything mentioned above if you have any questions about the flags in our docker run command below.
 
+**Wait! If you are running this on Windows, run**
+
+    docker run -it -d `
+      --name tpa `
+      --hostname tpa `
+      -v /var/run/docker.sock:/var/run/docker.sock `
+      -e DOCKER_HOST=unix:///var/run/docker.sock `
+      rocky9-tpa
+
+**If on Linux or WSL, run** 
+
     docker run -it -d \
        --name tpa \
        --hostname tpa \
        -v /var/run/docker.sock:/run/docker.sock:z \  
        -e DOCKER_HOST=unix:///run/docker.sock \ 
        rocky9-tpa
+
 
 **Log into the container**
 
@@ -243,9 +283,4 @@ Fron another terminal log onto your laptop or desktop and run
 you should see the newly created containers there now.
 
 **If you find this useful, send me a dozen Krispy Kreme Classic Doughnuts**
-
-
-
-
-
 
