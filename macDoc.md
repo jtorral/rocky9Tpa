@@ -58,7 +58,7 @@ To summarize it ...
 **Make sure docker is running on the host computer. ( The Brain Computer )**
 
 
-    docker build --build-arg EDBTOKEN="your-subscription-token-in-here" --build-arg ADMINUSER="tpa_admin" -t rocky9-tpa .
+    docker build -f DockerfileArm --build-arg EDBTOKEN="your-subscription-token-in-here" --build-arg ADMINUSER="tpa_admin" -t rocky9-tpa .
 
 
 In the above command, you can change the name of the **ADMINUSER** if you like.
