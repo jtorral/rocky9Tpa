@@ -9,3 +9,4 @@ There are several way to run this based on your architecture and base OS hosting
 [Running Strictly Windows](https://github.com/jtorral/rocky9Tpa/blob/main/winDoc.md)
 [Running Windows with WSL](https://github.com/jtorral/rocky9Tpa/blob/main/winWslDoc.md)
 [Running strictly Linux](https://github.com/jtorral/rocky9Tpa/blob/main/linuxDoc.md)
+[MAC OS on ARM](https://github.com/jtorral/rocky9Tpa/blob/main/macDoc.md)
