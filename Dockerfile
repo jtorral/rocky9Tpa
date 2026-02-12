@@ -13,7 +13,12 @@ RUN dnf -y --setopt=sslverify=false update && \
 
 # install python docker sdk needed for tpa/ansible
 
-RUN pip3 install --no-cache-dir docker
+RUN pip3 install --no-cache-dir \
+    --trusted-host pypi.org \
+    --trusted-host pypi.python.org \
+    --trusted-host files.pythonhosted.org \
+    docker
+
 
 # install edb repository tpa and prep for a tpa admiN
 # We pass our token as argument at build time
