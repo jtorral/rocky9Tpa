@@ -1,3 +1,4 @@
+
 # rocky9Tpa - Windows & WSL
 
 
@@ -24,7 +25,7 @@ Restart your machine.  Yes, the classic Windows tax. There are many reasons why 
 
 https://www.docker.com/products/docker-desktop/
 
-**Important!** 
+**Important!**
 
 During installation, make sure the box **“Use the WSL 2 based engine”** is checked. If it’s not, Docker will try to use Hyper V, which is like trying to race a Ferrari in a school zone.
 
@@ -36,7 +37,7 @@ Open **PowerShell as Administrator** and run:
 
     wsl --install AlmaLinux-9
 
-Launch "AlmaLinux 9" from your Start Menu. It will ask for a username and password. 
+Launch "AlmaLinux 9" from your Start Menu. It will ask for a username and password.
 
 **Important!**
 
@@ -63,9 +64,9 @@ If the TPA container were a "real" DinD setup, it would have a whole Docker engi
 The **Docker Socket** is the telephone line to the Docker Engine.
 
 -   **The Brain** The Docker Engine (the daemon) lives on the AlmaLinux / WSL host, outside the TPA container.
-    
--   **The Remote Control ** The Docker CLI (the commands you type) lives inside the TPA container.
-    
+
+-   **The Remote Control** The Docker CLI (the commands you type) lives inside the TPA container.
+
 
 By mounting `-v /var/run/docker.sock:/run/docker.sock`, you are literally plugging the telephone line from the host into the container.  Without this, when TPA tries to run a command like `docker run postgres`, the container would say "I don't see a Docker engine here!"  and fail immediately.
 
@@ -80,18 +81,18 @@ The `-e DOCKER_HOST=unix:///run/docker.sock` tells the CLI "Don't look in the us
 When you tell TPA to build a Postgres cluster
 
 1.  **Inside the container** TPA issues a command:  "Hey Docker, create a new container for a Postgres node."
-    
+
 2.  **The Journey** That command travels through the "Telephone Line" (`/run/docker.sock`).
-    
+
 3.  **The Execution** The host’s Docker Engine (The Brain on AlmaLinux/WSL) hears the request and starts the new container **next to** our TPA container, not inside it.
-    
+
 
 ### **Summary of the DooD Advantage**
 
 -   **No Overhead** Uses the host's resources directly instead of nesting multiple engines.
-    
+
 -   **Visibility** You can see all the generated Postgres containers by running `docker ps` on your **AlmaLinux / WSL host**, which makes debugging much easier.
-    
+
 -   **Persistence** If the TPA container stops or crashes, the Postgres nodes it created keep running on the host.
 
 
@@ -219,6 +220,3 @@ From within the same directory run
     tpaexec deprovision .
 
 **If you find this useful, send me a dozen Krispy Kreme Classic Doughnuts**
-
-
-

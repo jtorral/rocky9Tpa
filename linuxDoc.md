@@ -6,81 +6,75 @@ So, you finally ditched the glitchy map, executed a perfect U turn, and found yo
 
 The GPS has stopped recalculating because, for the first time, you actually know exactly where you are. No more secret passages through WSL, no more Windows plumbing, and definitely no more 45 minute updates holding your terminal hostage. You’ve traded the I can’t believe it’s not Linux tunnel for the actual sunlight of the open source world.
 
-## Understand what we are doing 
+## Understand what we are doing
 
-This is a bit of a brain bender at first, but it makes sense once you realize that the tpa container we are setting up here isn't actually "hosting" the other containers that will be generated with tpa for either production or training. It's just the remote control for them.
+### The "Docker out of Docker" (DooD) Concept
 
-**The Docker out of Docker Concept**
+This is a bit of a brain bender at first, but it makes sense once you realize that the **TPA container** we are setting up isn’t actually “hosting” the other containers. It is just the **remote control**.
 
-Even though we call this DinD (Docker in Docker), what we are actually doing is DooD (Docker out of Docker).
+### DooD vs. DinD
 
-If the tpa container was a real DinD setup, it would have a whole Docker engine running inside it. That makes containers nested like Russian dolls, which is slow and often breaks. Instead, I want the tpa container to use the Docker engine already running on mAlmaLinux/WSL host or whatever host you have which is much more powerful.
+Even though people call this **DinD** (Docker in Docker), we are actually doing **DooD** (Docker out of Docker).
 
-**Why the socket reference (-v /var/run/docker.sock) for our docker run command ?**
+**The Russian Doll Problem** Real DinD runs a whole Docker engine inside a container. It’s slow, it’s heavy, and it often breaks.
+    
+**The DooD Solution** We want the TPA container to use the Docker engine already running on your host (AlmaLinux, Fedora, or WSL), which is much more powerful.
+    
 
-The Docker Socket is the telephone line to the Docker Engine.
+### The Socket (`-v /var/run/docker.sock`)
 
-In this setup, the Docker Engine (the brain) lives on the Linux host. Outside of the actual tpa container.
+The Docker Socket is the **telephone line** to the Docker Engine.
 
-The Docker CLI (the remote control) lives inside the tpa container.
+**The Brain** The Docker Engine lives on your Linux host.
+    
+**The Remote** The Docker CLI lives inside the TPA container.
+    
 
-By mounting  **-v /var/run/docker.sock:/run/docker.sock**, I am literally plugging the telephone line from the host into the container. Without this, when tpa tries to run a command like docker run postgres, the container would say, "Dude! I don't see a docker engine here, I don't know what to do." then fail.
+By mounting `-v /var/run/docker.sock:/run/docker.sock`, you are plugging the telephone line from the host into the container. Without this, TPA would say,  "Dude! I don’t see a Docker engine here" and fail immediately.
 
-**What is with the environment variable ( -e DOCKER_HOST ) ?**
+### The Environment Variable (`-e DOCKER_HOST`)
 
-In this specific setup, I mounted the socket to /run/docker.sock. However, the Docker CLI usually expects that telephone line to be at /var/run/docker.sock.
+We mounted the socket to `/run/docker.sock`, but the Docker CLI usually looks for it at `/var/run/docker.sock`. The `-e DOCKER_HOST=unix:///run/docker.sock` tells the CLI: _"Don't look in the usual spot; use this specific plug I just gave you."_
 
-The  `-e DOCKER_HOST=unix:///run/docker.sock`  tells the CLI, "Don't look in the usual spot, use this specific plug I just gave you." It ensures tpa doesn't get a "connection refused" error.
+----------
 
-**How it works in reality**
+## The Red Hat Family Caveats (SELinux)
 
-When you tell tpa to build a Postgres cluster,
+If you are running Pure Linux on the Red Hat family (Fedora, RHEL, AlmaLinux, Rocky), you will hit a bump in the road that Ubuntu users don't see.
 
-Inside the container, tpa issues a command "Hey Docker, create a new container for a Postgres node."
+### The `:z` Flag (SELinux Labeling)
 
-That command travels through the Telephone Line, /run/docker.sock file.
+On Fedora/RHEL, **SELinux** is the proverbial security guard. It checks the "badge" (label) of every file. Even if you mount the socket, the guard sees a "Host Badge" on the file and a "Container Badge" on the process and blocks the connection.
 
-The host’s Docker Engine ( The Brain on the AlmaLinux / WSL ) hears the request and starts the new container next to our already running tpa container, not inside it.
+When you add `:z` to your volume mount: `-v /var/run/docker.sock:/run/docker.sock:z`
 
-To summarize it ...
+Docker tells selinux:  "I’m sharing this. Please relabel it so the container is allowed to talk to it."
 
--   This method uses the host's resources directly instead of nesting overhead.
--   You can see all the generated Postgres containers by running docker ps on the AlmaLinux / WSL host, which makes debugging much easier.
--   If the tpa container stops, the Postgres containers it created keep running on the host
+**The Nuclear Option** Sometimes Fedora's default policy is so restrictive that even `:z` isn't enough. In those cases, setting selinux to `permissive` (telling the guard to "take a hike") is the only way to get TPA to talk to the socket. It's a PITA, but it's a Red Hat trait.
 
-The Redhat Family caveats.
+### Does this apply to Ubuntu or Debian?
 
-In this scenario, the Host is running pure linux. No WSL. Just plain old Fedora. However, even though it is straight forward Unix I had a bump in the road. Thus, I was running into the security layers specific to the RHEL family.
+**No.** They use AppArmor, which handles things differently. However, you can leave the `:z` flag in the command regardless of the OS. The Docker engine is smart, on Ubuntu, it sees the `:z`, realizes there is no selinux to worry about, and simply ignores it. It makes your `docker run` command **cross platform**.
 
-By the way, Ubuntu and Debian users rarely see this because they use a different security framework.
+----------
 
-**The :z flag ( selinux labeling )**
+### Summary of the DooD Advantage
 
-On Fedora, selinux is the proverbial pain in the butt. It is like a strict security guard that checks the badge (label) of every file. Even if you mount the socket into the container, the guard sees that the socket has a Host Badge and the container has a Container Badge. It blocks the connection because the labels don't match.
+-   **Direct Resources** No nesting overhead uses the host's power.
+    
+-   **Visibility** Run `docker ps` on your host and you'll see all your Postgres nodes sitting right next to your TPA container.
+    
+-   **Persistence** If the TPA "remote control" container stops, your Postgres cluster keeps running on the host.
 
-When you add **:z** to your volume mount, Docker automatically tells selinux: "Hey dude, I'm sharing this file with multiple containers. Please relabel it so the containers are allowed to talk to it.
 
-This changes the selinux context of the socket so the container process has permission to touch it.
+## Getting started
 
-***I actually had to disable selinux on my Fedora laptop even with :z, sometimes the default selinux policy on Fedora is so restrictive that it blocks containers from accessing system sockets entirely for safety. By disabling it (or setting it to permissive), I told the guard to take a hike and stop blocking actions. This is a real PITA some times.***
+**Make sure docker is running on the host computer. ( The Brain Computer )**
 
-**Does this apply to Ubuntu or Debian?**
-
-No. This is a Red Hat family trait.
-
-Having said that about the :z flag, You can leave the :z (or :Z) flag in the run command, and it will run perfectly fine on Ubuntu, Debian, and even macOS or Windows.
-
-The Docker engine is designed to be cross platform. When you pass the :z flag to a Docker engine running on a system without selinux (like Ubutu ), Docker simply recognizes the flag but realizes there are no selinux labels to apply. It silently ignores the instruction and mounts the volume normally
-
-### Getting started
-
-**Make sure docker is running on the host computer. ( The Brain Computer )** 
-
+Make sure you have your e=EDB subscription token. You will need it for the next command.
 
     docker build --build-arg EDBTOKEN="your-subscription-token-in-here" --build-arg ADMINUSER="tpa_admin" -t rocky9-tpa .
 
-
-In the above command, you can change the name of the **ADMINUSER** if you like.
 
 **Run the container**
 
@@ -115,7 +109,7 @@ Once your ps command returns clean, you are good to go.
 
 **Run a self test**
 
-You can do this as the root user or the ADMINUSER you created.  
+You can do this as the root user or the ADMINUSER you created.
 
 To run as the tpa_admin user, simply run
 
@@ -153,13 +147,13 @@ Then run this simple configure
 
 At the time of this writing efm was not available for ARM. So swapping for patroni.  There is a newer version. Once I get the details, I will update this doc.
 
-    tpaexec configure ~/clusters/mytest --architecture M1 --postgresql 17 --platform docker --distribution Rocky --enable-efm --data-nodes-per-location 2 --no-git
+    tpaexec configure ~/clusters/tpademo--architecture M1 --postgresql 17 --platform docker --distribution Rocky --enable-efm --data-nodes-per-location 2 --no-git
 
-The above will create a two node cluster named **mytest**
+The above will create a two node cluster named **tpademo**
 
-cd into the mytest directory
+cd into the tpademo directory
 
-    cd mytest
+    cd tpademo
 
 Modify the config.yml file
 
@@ -178,7 +172,7 @@ From within the same directory run
 
     tpaexec provision .
 
-If successful, follow up with a 
+If successful, follow up with a
 
     tpaexec deploy .
 
@@ -195,4 +189,3 @@ From within the same directory run
     tpaexec deprovision .
 
 **If you find this useful, send me a dozen Krispy Kreme Classic Doughnuts**
-
