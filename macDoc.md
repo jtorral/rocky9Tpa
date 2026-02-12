@@ -1,5 +1,5 @@
 
-# rocky9Tpa - Mac OS with ARM 
+# rocky9Tpa - Mac OS with ARM
 
 
 
@@ -11,7 +11,7 @@ Welcome to macOS on ARM the only OS that matters if you actually value your aest
 
 The system is whisper silent, the icons are perfectly radiused, and honestly, the way the shadows fall on the windows is more impressive than the actual uptime. Let’s get to work mostly so we have an excuse to keep looking at this screen. :)
 
-## Understand what we are doing
+## Some background. Understand what we are doing
 
 This is a bit of a brain bender at first, but it makes sense once you realize that the tpa container we are setting up here isn't actually "hosting" the other containers that will be generated with tpa for either production or training. It's just the remote control for them.
 
@@ -57,17 +57,14 @@ To summarize it ...
 
 **Make sure docker is running on the host computer. ( The Brain Computer )**
 
+    docker build  -f DockerfileArm  --build-arg EDBTOKEN="a42f0873c732be6edafe2e22849eb0ff"    --build-arg ADMINUSER="tpa_admin" -t rocky9-tpa .
 
-    docker build -f DockerfileArm --build-arg EDBTOKEN="your-subscription-token-in-here" --build-arg ADMINUSER="tpa_admin" -t rocky9-tpa .
-
-
-In the above command, you can change the name of the **ADMINUSER** if you like.
 
 **Run the container**
 
 Once the image builds,  run the container.  Keep in mind everything mentioned above if you have any questions about the flags in our docker run command below.
 
-    docker run -it -d --name tpa --hostname tpa -v /var/run/docker.sock:/run/docker.sock:z -e DOCKER_HOST=unix:///run/docker.sock  rocky9-tpa
+    docker run -it -d --name tpa --hostname tpa -v /var/run/docker.sock:/run/docker.sock:z -e DOCKER_HOST=unix:///run/docker.sock rocky9-tpa
 
 **Log into the container**
 
@@ -94,28 +91,6 @@ root        46    44 10 14:55 pts/0    00:00:02 /opt/EDB/TPA/tpa-venv/bin/python
 
 Once your ps command returns clean, you are good to go.
 
-**Run a self test**
-
-You can do this as the root user or the ADMINUSER you created.
-
-To run as the tpa_admin user, simply run
-
-    su - tpa_admin
-
-And run the self test.
-
-    tpaexec selftest
-
-Which will show an output with and ending like ...
-
-```
-PLAY RECAP *******************************************************************************************************************************************************
-localhost                  : ok=4    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
-```
-
-At this point you are good to go.
-
-
 ### A simple deploy example,
 
 Still logged in as the admin_user
@@ -130,15 +105,12 @@ Then cd into the clusters directory
 
 **cd clusters**
 
-Then run this simple configure
-
-At the time of this writing efm was not available for ARM. So swapping for patroni.  There is a newer version. Once I get the details, I will update this doc.
 
     tpaexec configure ~/clusters/mytest --architecture M1 --postgresql 17 --platform docker --distribution Rocky --enable-efm --data-nodes-per-location 2 --no-git
 
 The above will create a two node cluster named **mytest**
 
-cd into the mytest directory
+cd into the **mytest** directory
 
     cd mytest
 
@@ -152,11 +124,26 @@ to
 
     keyring_backend: legacy
 
-The older EFM versions are not supported on ARM.  So, add this code under the cluster_vars: section
+The older EFM versions are not supported on ARM.  So, add this code under the cluster_vars: section to make sure we get the latest EFM version that works on ARM.
 
     cluster_vars:
       efm_version: '5.2'
 
+Here is a better visual of where the line should go in your config.yml file
+
+    cluster_vars:
+      apt_repository_list: []
+      edb_repositories:
+      - standard
+      efm_user_password_encryption: scram-sha-256
+      failover_manager: efm
+      efm_version: '5.2'
+      postgres_flavour: postgresql
+      postgres_version: '17'
+      preferred_python_version: python3
+      suse_repository_list: []
+      use_volatile_subscriptions: false
+      yum_repository_list:
 
 Save your changes
 
