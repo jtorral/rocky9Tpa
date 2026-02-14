@@ -3,7 +3,6 @@
 # Ensure we fail if a command fails
 set -e
 
-
 if ! id "$ADMINUSER" &>/dev/null; then
     echo "Creating user: ${ADMINUSER}"
     echo
@@ -21,15 +20,37 @@ export PATH=\$PATH:/opt/EDB/TPA/bin
 
 if ! grep -q "EDB_SUBSCRIPTION_TOKEN" "$PROFILE_PATH" 2>/dev/null; then
     echo "Configuring environment variables in profiles..."
-    echo 
+    echo
     echo "$export_lines" >> /root/.bash_profile
     echo "$export_lines" >> "$PROFILE_PATH"
     chown "${ADMINUSER}:${ADMINUSER}" "$PROFILE_PATH"
 fi
 
-if ! getent group docker > /dev/null; then
-    groupadd docker
+# --- GID FIX Need this because gid for docker may vary and we need the privs from inside tps to run docker outside tpa ---
+# 1. Detect the GID of the mounted socket (e.g., 1001 from AlmaLinux host)
+if [ -S /run/docker.sock ]; then
+    DOCKER_GID=$(stat -c '%g' /run/docker.sock)
+    echo "Detected Docker socket GID: $DOCKER_GID"
+
+    # 2. If the 'docker' group exists but has the wrong GID, delete it
+    if getent group docker > /dev/null; then
+        EXISTING_GID=$(getent group docker | cut -d: -f3)
+        if [ "$EXISTING_GID" != "$DOCKER_GID" ]; then
+            groupdel docker
+        fi
+    fi
+
+    # 3. Create/Re-create the 'docker' group with the correct GID from the host
+    if ! getent group docker > /dev/null; then
+        groupadd -g "$DOCKER_GID" docker
+    fi
+else
+    # Fallback if no socket is mounted
+    if ! getent group docker > /dev/null; then
+        groupadd docker
+    fi
 fi
+# --- GID FIX END ---
 
 usermod -aG docker "${ADMINUSER}"
 
@@ -41,13 +62,13 @@ fi
 TPA_SETUP_RAN="/opt/EDB/TPA/.tpa_setup_complete"
 if [ ! -f "$TPA_SETUP_RAN" ]; then
     echo "Performing first time TPA configuration..."
-    echo 
+    echo
     export PATH="$PATH:/opt/EDB/TPA/bin"
     echo 'export PATH="$PATH:/opt/EDB/TPA/bin"' > /etc/profile.d/tpa.sh
-    
+
     # Run EDB TPA setup
     /opt/EDB/TPA/bin/tpaexec setup
-    
+
     touch "$TPA_SETUP_RAN"
     echo "TPA setup complete."
     echo
@@ -55,7 +76,6 @@ else
     echo "TPA already configured, skipping setup."
     echo
 fi
-
 
 if [ ! -f "/root/.ssh/id_rsa" ]; then
     echo "Setting up SSH keys for root..."
@@ -69,7 +89,6 @@ if [ ! -f "/root/.ssh/id_rsa" ]; then
     chmod 0700 /root/.ssh
     chmod 0600 /root/.ssh/*
 fi
-
 
 ADMIN_SSH="/home/${ADMINUSER}/.ssh"
 if [ ! -f "${ADMIN_SSH}/id_rsa" ]; then
@@ -87,7 +106,7 @@ fi
 if [ ! -f "/etc/ssh/ssh_host_rsa_key" ]; then
     echo "Generating SSH host keys..."
     echo
-    ssh-keygen -A 
+    ssh-keygen -A
     echo "StrictHostKeyChecking no" >> /etc/ssh/ssh_config
 fi
 

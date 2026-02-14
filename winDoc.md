@@ -1,4 +1,3 @@
-
 # rocky9Tpa - Windows & WSL
 
 
@@ -43,9 +42,40 @@ Launch "AlmaLinux 9" from your Start Menu. It will ask for a username and passwo
 
 Go back to Docker Desktop Settings > Resources > WSL Integration and toggle the switch for AlmaLinux-9 to ON. Click "Apply & Restart."
 
+**Log on to the new AlmaLinux WSL** 
+
+At this point you might as well set a password for root so you can su to root as needed.
+
+    sudo su -
+
+Once you provide your pawssword and have the root prompt, change the password for root.
+
+    passwd
+
+Enter and confirm the new password when prompted.
+
+Last thing,  since you will be cloning packages from git, you will need to install git.
+
+As root, run
+
+    dnf install -y git
+
+This should take care of it.
 
 
+**One last what if note**
 
+Once you are logged in to your WSL instance. Not the container but the AlmuLinux on wsl.  If your run
+
+    docker ps
+
+And get the following error
+
+    permission denied while trying to connect to the docker API at unix:///var/run/docker.sock  
+
+Run this command as user root  to resolve the issue.
+
+    chown root:docker /var/run/docker.soc
 
 ## Understand what what we are doing
 
